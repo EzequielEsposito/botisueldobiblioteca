@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administración — Asistente de Biblioteca</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.card { background: #fff; border: 1px solid #e0ddd5; border-radius: 16px; padding: 36px; width: 100%; max-width: 640px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
+.logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.logo-icon { width: 40px; height: 40px; background: #1a1a1a; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; }
+.logo h1 { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+.logo p { font-size: 12px; color: #888; }
+hr { border: none; border-top: 1px solid #e0ddd5; margin: 24px 0; }
+label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+input[type="text"], input[type="password"], textarea {
+  width: 100%; border: 1px solid #e0ddd5; border-radius: 8px; padding: 10px 12px;
+  font-size: 13px; font-family: inherit; outline: none; color: #1a1a1a; background: #fafaf8;
+}
+input:focus, textarea:focus { border-color: #aaa; background: #fff; }
+textarea { resize: vertical; min-height: 220px; line-height: 1.6; }
+.field { margin-bottom: 20px; }
+.hint { font-size: 11px; color: #999; margin-top: 5px; }
+.hint a { color: #3b6fd4; text-decoration: none; }
+.btn { width: 100%; padding: 12px; background: #1a1a1a; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn:hover { background: #333; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#status { margin-top: 16px; padding: 12px 16px; border-radius: 8px; font-size: 13px; display: none; }
+.status-ok { background: #e6f4ec; color: #2e7d52; border: 1px solid #a5d6b5; }
+.status-err { background: #fdecea; color: #b71c1c; border: 1px solid #f5c6c6; }
+.status-loading { background: #e8f0fb; color: #3b6fd4; border: 1px solid #c0d4f5; }
+.script-box { background: #f5f5f0; border: 1px solid #e0ddd5; border-radius: 8px; padding: 14px; font-size: 12px; color: #444; line-height: 1.7; }
+.script-box code { background: #e8e8e0; border-radius: 4px; padding: 1px 5px; font-family: monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">📚</div>
+    <div>
+      <h1>Panel de Administración</h1>
+      <p>Asistente de Biblioteca</p>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>URL del Google Apps Script</label>
+    <input type="text" id="script-url" placeholder="https://script.google.com/macros/s/XXXXXX/exec" />
+    <p class="hint">Seguí las instrucciones del archivo <strong>instrucciones.html</strong> para obtener esta URL.</p>
+  </div>
+
+  <hr>
+
+  <div class="field">
+    <label>API Key de Groq</label>
+    <input type="password" id="api-key" placeholder="gsk_..." />
+    <p class="hint">Obtenela gratis en <a href="https://console.groq.com" target="_blank">console.groq.com</a> → API Keys</p>
+  </div>
+
+  <div class="field">
+    <label>Instructivo de la biblioteca</label>
+    <textarea id="instructivo" placeholder="Escribí o pegá aquí el texto completo del instructivo...
+
+Ejemplo:
+Para localizar un libro en el estante necesitás el número de clasificación (signatura topográfica). Este dato se encuentra en el catálogo bajo el campo 'Signatura' o 'Ubicación'..."></textarea>
+    <p class="hint">Este texto es la base de conocimiento que usará la IA para responder consultas.</p>
+  </div>
+
+  <button class="btn" onclick="guardar()" id="btn-guardar">
+    💾 Guardar configuración
+  </button>
+
+  <div id="status"></div>
+</div>
+
+<script>
+async function guardar() {
+  const url = document.getElementById('script-url').value.trim();
+  const apiKey = document.getElementById('api-key').value.trim();
+  const instructivo = document.getElementById('instructivo').value.trim();
+
+  if (!url || !apiKey || !instructivo) {
+    mostrarStatus('Completá todos los campos antes de guardar.', 'err');
+    return;
+  }
+  if (!url.startsWith('https://script.google.com')) {
+    mostrarStatus('La URL del script no parece válida. Verificá que empiece con https://script.google.com', 'err');
+    return;
+  }
+  if (!apiKey.startsWith('gsk_')) {
+    mostrarStatus('La API Key de Groq debe empezar con gsk_', 'err');
+    return;
+  }
+
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+  mostrarStatus('Guardando configuración...', 'loading');
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'save', apiKey, instructivo })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      mostrarStatus('✅ Configuración guardada correctamente. El chatbot ya está actualizado.', 'ok');
+    } else {
+      mostrarStatus('Error al guardar: ' + (data.error || 'respuesta inesperada del servidor'), 'err');
+    }
+  } catch (err) {
+    mostrarStatus('No se pudo conectar con el script. Verificá la URL. Error: ' + err.message, 'err');
+  }
+
+  btn.disabled = false;
+}
+
+function mostrarStatus(msg, tipo) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status-' + tipo;
+  el.style.display = 'block';
+}
+
+// Cargar URL guardada localmente para comodidad
+window.onload = () => {
+  const url = localStorage.getItem('scriptUrl');
+  if (url) document.getElementById('script-url').value = url;
+  document.getElementById('script-url').addEventListener('input', e => {
+    localStorage.setItem('scriptUrl', e.target.value);
+  });
+};
+</script>
+</body>
+</html>

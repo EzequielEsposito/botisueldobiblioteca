@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instrucciones de configuración</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f0; padding: 32px 16px; color: #1a1a1a; }
+.container { max-width: 700px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
+.step { background: #fff; border: 1px solid #e0ddd5; border-radius: 12px; padding: 24px; margin-bottom: 16px; display: flex; gap: 18px; }
+.step-num { width: 36px; height: 36px; min-width: 36px; background: #1a1a1a; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; margin-top: 2px; }
+.step-body h2 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.step-body p { font-size: 13px; color: #555; line-height: 1.7; margin-bottom: 8px; }
+.step-body a { color: #3b6fd4; text-decoration: none; font-weight: 500; }
+.step-body a:hover { text-decoration: underline; }
+pre { background: #f5f5f0; border: 1px solid #e0ddd5; border-radius: 8px; padding: 14px; font-size: 12px; overflow-x: auto; line-height: 1.6; color: #333; margin: 10px 0; white-space: pre-wrap; word-break: break-all; }
+.copy-btn { font-size: 11px; padding: 4px 10px; background: #1a1a1a; color: #fff; border: none; border-radius: 5px; cursor: pointer; margin-top: 6px; }
+.copy-btn:hover { background: #333; }
+.tag { display: inline-block; background: #fff8e1; color: #7a5c00; border: 1px solid #f0e08a; border-radius: 5px; font-size: 11px; padding: 2px 7px; font-weight: 600; margin: 0 2px; }
+.tag.green { background: #e6f4ec; color: #2e7d52; border-color: #a5d6b5; }
+.tag.blue { background: #e8f0fb; color: #3b6fd4; border-color: #c0d4f5; }
+.alert { background: #fff8e1; border: 1px solid #f0e08a; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #7a5c00; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⚙️ Instrucciones de configuración</h1>
+  <p class="subtitle">Seguí estos 5 pasos para dejar el asistente funcionando en tu hosting.</p>
+
+  <!-- PASO 1 -->
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h2>Crear la Google Sheet</h2>
+      <p>Entrá a <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> y creá una hoja nueva. Podés llamarla <strong>"Config Biblioteca"</strong>. No necesitás escribir nada adentro, el script lo hace solo.</p>
+    </div>
+  </div>
+
+  <!-- PASO 2 -->
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h2>Abrir el editor de Apps Script</h2>
+      <p>Dentro de la Google Sheet, hacé clic en el menú <span class="tag">Extensiones</span> → <span class="tag">Apps Script</span>. Se abre el editor de código.</p>
+    </div>
+  </div>
+
+  <!-- PASO 3 -->
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h2>Pegar el código del script</h2>
+      <p>Borrá todo el contenido que hay en el editor y pegá este código:</p>
+      <pre id="script-code">function doGet(e) {
+  var action = e.parameter.action;
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  if (action === 'get') {
+    var apiKey = sheet.getRange('A1').getValue();
+    var instructivo = sheet.getRange('B1').getValue();
+    if (!apiKey || !instructivo) {
+      return jsonResponse({ ok: false, error: 'Sin configuración' });
+    }
+    return jsonResponse({ ok: true, apiKey: apiKey, instructivo: instructivo });
+  }
+
+  return jsonResponse({ ok: false, error: 'Acción no válida' });
+}
+
+function doPost(e) {
+  var body = JSON.parse(e.postData.contents);
+  if (body.action === 'save') {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    sheet.getRange('A1').setValue(body.apiKey);
+    sheet.getRange('B1').setValue(body.instructivo);
+    return jsonResponse({ ok: true });
+  }
+  return jsonResponse({ ok: false, error: 'Acción no válida' });
+}
+
+function jsonResponse(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+      <button class="copy-btn" onclick="copyScript()">📋 Copiar código</button>
+    </div>
+  </div>
+
+  <!-- PASO 4 -->
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h2>Publicar como aplicación web</h2>
+      <p>En el editor de Apps Script:</p>
+      <p>1. Hacé clic en <span class="tag blue">Implementar</span> → <span class="tag blue">Nueva implementación</span></p>
+      <p>2. En "Tipo" seleccioná <span class="tag">Aplicación web</span></p>
+      <p>3. En <strong>"Ejecutar como"</strong> elegí <span class="tag green">Yo</span></p>
+      <p>4. En <strong>"Quién tiene acceso"</strong> elegí <span class="tag green">Cualquier persona</span></p>
+      <p>5. Hacé clic en <span class="tag blue">Implementar</span> y autorizá los permisos</p>
+      <p>6. <strong>Copiá la URL</strong> que aparece — empieza con <code style="background:#f5f5f0;padding:2px 5px;border-radius:4px;font-size:12px">https://script.google.com/macros/s/...</code></p>
+      <div class="alert">⚠️ Guardá bien esa URL, la vas a necesitar en los pasos siguientes.</div>
+    </div>
+  </div>
+
+  <!-- PASO 5 -->
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <h2>Configurar los archivos HTML</h2>
+      <p><strong>En admin.html:</strong> pegás la URL del script en el campo correspondiente. Desde ahí cargás el instructivo y la API key.</p>
+      <p><strong>En consulta.html:</strong> abrí el archivo con un editor de texto y buscá esta línea:</p>
+      <pre>const SCRIPT_URL = 'PEGAR_URL_DEL_SCRIPT_AQUI';</pre>
+      <p>Reemplazá <code style="background:#f5f5f0;padding:2px 5px;border-radius:4px;font-size:12px">PEGAR_URL_DEL_SCRIPT_AQUI</code> con tu URL del script.</p>
+      <p style="margin-top:10px">Luego subí los tres archivos a tu hosting y listo. Los usuarios acceden a <strong>consulta.html</strong> y vos administrás desde <strong>admin.html</strong>.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function copyScript() {
+  const code = document.getElementById('script-code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ Copiado';
+    setTimeout(() => btn.textContent = '📋 Copiar código', 2000);
+  });
+}
+</script>
+</body>
+</html>

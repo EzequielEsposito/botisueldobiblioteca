@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente de Biblioteca</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f0; display: flex; flex-direction: column; height: 100vh; }
+
+#topbar { padding: 14px 20px; background: #fff; border-bottom: 1px solid #e0ddd5; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.top-icon { width: 36px; height: 36px; background: #1a1a1a; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+#topbar h1 { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+#topbar p { font-size: 12px; color: #888; }
+#conn-status { margin-left: auto; font-size: 11px; padding: 4px 10px; border-radius: 20px; background: #f5f5f0; color: #888; border: 1px solid #e0ddd5; }
+#conn-status.ok { background: #e6f4ec; color: #2e7d52; border-color: #a5d6b5; }
+#conn-status.err { background: #fdecea; color: #b71c1c; border-color: #f5c6c6; }
+
+#messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; max-width: 780px; width: 100%; margin: 0 auto; }
+
+.msg { display: flex; gap: 10px; max-width: 85%; }
+.msg.user { align-self: flex-end; flex-direction: row-reverse; }
+.msg.assistant { align-self: flex-start; }
+.bubble { padding: 11px 15px; border-radius: 16px; font-size: 14px; line-height: 1.65; }
+.msg.user .bubble { background: #1a1a1a; color: #fff; border-bottom-right-radius: 4px; }
+.msg.assistant .bubble { background: #fff; color: #1a1a1a; border-bottom-left-radius: 4px; border: 1px solid #e8e5de; white-space: pre-wrap; }
+.avatar { width: 30px; height: 30px; min-width: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; margin-top: 2px; flex-shrink: 0; }
+.avatar.user-av { background: #1a1a1a; color: #fff; font-size: 11px; font-weight: 600; }
+.avatar.bot-av { background: #f5f5f0; border: 1px solid #e0ddd5; }
+
+.typing-dots span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #aaa; margin: 0 2px; animation: bounce 1.2s infinite; }
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+
+#suggested { padding: 0 20px 10px; display: flex; flex-wrap: wrap; gap: 7px; max-width: 780px; width: 100%; margin: 0 auto; }
+.chip { font-size: 12px; padding: 6px 13px; background: #fff; border: 1px solid #e0ddd5; border-radius: 20px; cursor: pointer; color: #555; transition: all 0.15s; }
+.chip:hover { background: #f5f5f0; color: #1a1a1a; }
+
+#input-wrap { padding: 12px 20px 16px; background: #fff; border-top: 1px solid #e0ddd5; flex-shrink: 0; }
+#input-row { display: flex; gap: 8px; align-items: flex-end; max-width: 780px; margin: 0 auto; }
+#user-input { flex: 1; border: 1px solid #e0ddd5; border-radius: 12px; padding: 10px 14px; font-size: 14px; font-family: inherit; resize: none; outline: none; background: #fafaf8; color: #1a1a1a; min-height: 42px; max-height: 120px; line-height: 1.5; }
+#user-input:focus { border-color: #aaa; background: #fff; }
+#send-btn { width: 42px; height: 42px; border-radius: 12px; background: #1a1a1a; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; font-size: 18px; }
+#send-btn:hover { background: #333; }
+#send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+#loading-screen { position: fixed; inset: 0; background: #f5f5f0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 100; }
+#loading-screen .spinner { width: 32px; height: 32px; border: 3px solid #e0ddd5; border-top-color: #1a1a1a; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading-screen p { font-size: 14px; color: #888; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p>Cargando asistente...</p>
+</div>
+
+<div id="topbar" style="display:none">
+  <div class="top-icon">📚</div>
+  <div>
+    <h1>Asistente de Biblioteca</h1>
+    <p>Consultas sobre el catálogo</p>
+  </div>
+  <div id="conn-status">Conectando...</div>
+</div>
+
+<div id="messages" style="display:none"></div>
+
+<div id="suggested" style="display:none">
+  <div class="chip" onclick="sendSuggestion('¿Qué dato necesito para ir al estante y encontrar un libro?')">¿Qué dato necesito para ir al estante?</div>
+  <div class="chip" onclick="sendSuggestion('¿Cómo busco un libro por autor?')">Buscar por autor</div>
+  <div class="chip" onclick="sendSuggestion('¿Cómo sé si un libro está disponible?')">¿Está disponible?</div>
+</div>
+
+<div id="input-wrap" style="display:none">
+  <div id="input-row">
+    <textarea id="user-input" placeholder="Escribí tu consulta..." rows="1"
+      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button id="send-btn" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIGURACIÓN ──────────────────────────────────────────
+// Reemplazá esta URL con la de tu Google Apps Script
+const SCRIPT_URL = 'PEGAR_URL_DEL_SCRIPT_AQUI';
+// ───────────────────────────────────────────────────────────
+
+let config = null;
+let conversationHistory = [];
+let isLoading = false;
+
+async function init() {
+  try {
+    const res = await fetch(SCRIPT_URL + '?action=get');
+    const data = await res.json();
+    if (data.ok && data.apiKey && data.instructivo) {
+      config = data;
+      document.getElementById('conn-status').textContent = '✓ En línea';
+      document.getElementById('conn-status').className = 'ok';
+      addMessage('assistant', '¡Hola! Soy el asistente de esta biblioteca. Podés preguntarme sobre cómo usar el catálogo. ¿En qué puedo ayudarte?');
+    } else {
+      throw new Error('Configuración incompleta');
+    }
+  } catch (e) {
+    document.getElementById('conn-status').textContent = 'Sin configuración';
+    document.getElementById('conn-status').className = 'err';
+    addMessage('assistant', '⚠️ El asistente aún no está configurado. Por favor contactá al administrador de la biblioteca.');
+    document.getElementById('send-btn').disabled = true;
+  }
+
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('topbar').style.display = 'flex';
+  document.getElementById('messages').style.display = 'flex';
+  document.getElementById('suggested').style.display = 'flex';
+  document.getElementById('input-wrap').style.display = 'block';
+}
+
+function addMessage(role, text) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const avatar = document.createElement('div');
+  if (role === 'user') {
+    avatar.className = 'avatar user-av';
+    avatar.textContent = 'Vos';
+  } else {
+    avatar.className = 'avatar bot-av';
+    avatar.textContent = '📚';
+  }
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addTyping() {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  div.id = 'typing-ind';
+  div.innerHTML = `<div class="avatar bot-av">📚</div><div class="bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-ind');
+  if (t) t.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text || isLoading || !config) return;
+
+  addMessage('user', text);
+  conversationHistory.push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+
+  isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  addTyping();
+
+  try {
+    const systemPrompt = `Sos un asistente de biblioteca que ayuda a los usuarios a entender y usar el catálogo.
+Respondé ÚNICAMENTE basándote en el siguiente instructivo. Si la pregunta no está cubierta, indicalo amablemente y sugerí que consulten al personal.
+Sé claro, conciso y amigable. Respondé siempre en español.
+
+INSTRUCTIVO:
+${config.instructivo}`;
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 1000,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...conversationHistory
+        ]
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || `Error ${res.status}`);
+    const reply = data.choices?.[0]?.message?.content || 'No pude obtener una respuesta.';
+    conversationHistory.push({ role: 'assistant', content: reply });
+    removeTyping();
+    addMessage('assistant', reply);
+  } catch (err) {
+    removeTyping();
+    addMessage('assistant', 'Hubo un error al procesar tu consulta. Por favor intentá de nuevo en unos momentos.');
+  }
+
+  isLoading = false;
+  document.getElementById('send-btn').disabled = false;
+}
+
+function sendSuggestion(text) {
+  document.getElementById('user-input').value = text;
+  sendMessage();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+init();
+</script>
+</body>
+</html>
