@@ -86,7 +86,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f0; d
 <script>
 // ── CONFIGURACIÓN ──────────────────────────────────────────
 // Reemplazá esta URL con la de tu Google Apps Script
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyixkP-v4HNkkkf9mxpdbsd6aS9nK7Wgog4gA5yXb5CPMJjvXhZU4MZ0sqX7bqfRVHDJA/exec';
+const SCRIPT_URL = 'PEGAR_URL_DEL_SCRIPT_AQUI';
 // ───────────────────────────────────────────────────────────
 
 let config = null;
@@ -199,6 +199,13 @@ ${config.instructivo}`;
     conversationHistory.push({ role: 'assistant', content: reply });
     removeTyping();
     addMessage('assistant', reply);
+
+    // Registrar consulta en Google Sheet
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'log', pregunta: text, respuesta: reply })
+    }).catch(() => {});
   } catch (err) {
     removeTyping();
     addMessage('assistant', 'Hubo un error al procesar tu consulta. Por favor intentá de nuevo en unos momentos.');
