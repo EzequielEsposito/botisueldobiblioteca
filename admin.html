@@ -130,12 +130,9 @@ function mostrarStatus(msg, tipo) {
 
 // Cargar datos guardados al abrir la página
 window.onload = () => {
-  const url = localStorage.getItem('scriptUrl');
-  const apiKey = localStorage.getItem('apiKey');
-  const instructivo = localStorage.getItem('instructivo');
-  if (url) document.getElementById('script-url').value = url;
-  if (apiKey) document.getElementById('api-key').value = apiKey;
-  if (instructivo) document.getElementById('instructivo').value = instructivo;
+  document.getElementById('script-url').value = 'https://script.google.com/macros/s/AKfycbz5kFnbD2te8ACcCtSmGPA-OU2pWn5mHqpofu3ii3XaYVsqffPcGXWO6C5FeNCri2sYVQ/exec';
+  document.getElementById('api-key').value = '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';
+  document.getElementById('instructivo').value = `TU INSTRUCTIVO COMPLETO ACÁ`;
 };
 </script>
 </body>
