@@ -189,6 +189,16 @@ function renderText(text) {
     text = text.split(tokens[t].key).join(tokens[t].html);
   }
 
+  // Negrita **texto**
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // Italica *texto*
+  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+  // Listas - item
+  text = text.replace(/(^|<br>)- (.+)/g, '$1<li>$2</li>');
+  text = text.replace(/(<li>.*<\/li>)/gs, '<ul style="margin:6px 0 6px 18px">$1</ul>');
+
   // Saltos de linea
   text = text.split('\n').join('<br>');
   return text;
