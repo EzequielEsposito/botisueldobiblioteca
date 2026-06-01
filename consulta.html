@@ -86,7 +86,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f0; d
 <script>
 // ── CONFIGURACIÓN ──────────────────────────────────────────
 // Reemplazá esta URL con la de tu Google Apps Script
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5kFnbD2te8ACcCtSmGPA-OU2pWn5mHqpofu3ii3XaYVsqffPcGXWO6C5FeNCri2sYVQ/exec';
+const SCRIPT_URL = 'PEGAR_URL_DEL_SCRIPT_AQUI';
 // ───────────────────────────────────────────────────────────
 
 let config = null;
@@ -120,26 +120,41 @@ async function init() {
 }
 
 function renderText(text) {
-  // Escapar HTML para evitar XSS
-  text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  // Convertir [img:URL] en imagenes
-  text = text.replace(/\[img:(https?:\/\/[^\]]+)\]/g, function(_, url) {
-    return '<img src="' + url + '" alt="imagen" style="max-width:100%;border-radius:8px;margin:6px 0;display:block">';
+  var result = '';
+  // Procesar el texto caracter por caracter para manejar etiquetas especiales
+  // Primero extraer y reemplazar [link:] e [img:] antes de escapar HTML
+  var parts = [];
+  var remaining = text;
+
+  // Reemplazar [link:URL|Label]
+  remaining = remaining.replace(/\[link:(https?:\/\/[^|\]]+)\|([^\]]+)\]/g, function(_, url, label) {
+    return 'LINK' + url + '' + label + '';
   });
-  // Convertir [link:URL|Texto] o [link:URL] en enlaces
-  text = text.replace(/\[link:(https?:\/\/[^|\]]+)\|([^\]]+)\]/g, function(_, url, label) {
+
+  // Reemplazar [link:URL]
+  remaining = remaining.replace(/\[link:(https?:\/\/[^\]]+)\]/g, function(_, url) {
+    return 'LINK' + url + '' + url + '';
+  });
+
+  // Reemplazar [img:URL]
+  remaining = remaining.replace(/\[img:(https?:\/\/[^\]]+)\]/g, function(_, url) {
+    return 'IMG' + url + '';
+  });
+
+  // Ahora escapar HTML del texto restante
+  remaining = remaining.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Restaurar los enlaces e imagenes
+  remaining = remaining.replace(/LINK([^]+)([^]+)/g, function(_, url, label) {
     return '<a href="' + url + '" target="_blank" style="color:#3b6fd4;text-decoration:underline">' + label + '</a>';
   });
-  text = text.replace(/\[link:(https?:\/\/[^\]]+)\]/g, function(_, url) {
-    return '<a href="' + url + '" target="_blank" style="color:#3b6fd4;text-decoration:underline">' + url + '</a>';
+  remaining = remaining.replace(/IMG([^]+)/g, function(_, url) {
+    return '<img src="' + url + '" alt="imagen" style="max-width:100%;border-radius:8px;margin:6px 0;display:block">';
   });
-  // Convertir URLs sueltas en enlaces
-  text = text.replace(/(^|\s)(https?:\/\/\S+)/g, function(_, pre, url) {
-    return pre + '<a href="' + url + '" target="_blank" style="color:#3b6fd4;text-decoration:underline">' + url + '</a>';
-  });
+
   // Saltos de linea
-  text = text.split('\n').join('<br>');
-  return text;
+  remaining = remaining.split('\n').join('<br>');
+  return remaining;
 }
 
 function addMessage(role, text) {
