@@ -86,7 +86,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f0; d
 <script>
 // ── CONFIGURACIÓN ──────────────────────────────────────────
 // Reemplazá esta URL con la de tu Google Apps Script
-const SCRIPT_URL = 'PEGAR_URL_DEL_SCRIPT_AQUI';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5kFnbD2te8ACcCtSmGPA-OU2pWn5mHqpofu3ii3XaYVsqffPcGXWO6C5FeNCri2sYVQ/exec';
 // ───────────────────────────────────────────────────────────
 
 let config = null;
@@ -120,47 +120,80 @@ async function init() {
 }
 
 function renderText(text) {
+  // Primero extraer [link:] e [img:] antes de escapar HTML
+  var tokens = [];
+  var tokenIndex = 0;
+
+  function storeToken(html) {
+    var key = '[[TOKEN_' + tokenIndex + ']]';
+    tokens.push({ key: key, html: html });
+    tokenIndex++;
+    return key;
+  }
+
+  // [link:URL|Label]
+  var i = 0;
+  var out = '';
+  while (i < text.length) {
+    var li = text.indexOf('[link:', i);
+    var ii = text.indexOf('[img:', i);
+    var next = -1;
+    var type = '';
+    if (li !== -1 && (ii === -1 || li < ii)) { next = li; type = 'link'; }
+    else if (ii !== -1) { next = ii; type = 'img'; }
+    if (next === -1) { out += text.slice(i); break; }
+    out += text.slice(i, next);
+    var close = text.indexOf(']', next);
+    if (close === -1) { out += text.slice(next); break; }
+    var inner = text.slice(next + (type === 'link' ? 6 : 5), close);
+    if (type === 'link') {
+      var pipe = inner.indexOf('|');
+      var url = pipe === -1 ? inner : inner.slice(0, pipe);
+      var label = pipe === -1 ? url : inner.slice(pipe + 1);
+      out += storeToken('<a href="' + url + '" target="_blank" style="color:#3b6fd4;text-decoration:underline">' + label + '</a>');
+    } else {
+      out += storeToken('<img src="' + inner + '" alt="imagen" style="max-width:100%;border-radius:8px;margin:6px 0;display:block">');
+    }
+    i = close + 1;
+  }
+  text = out;
+
+  // Escapar HTML
+  text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Convertir enlaces Markdown [texto](url) sin regex
   var result = '';
-  // Procesar el texto caracter por caracter para manejar etiquetas especiales
-  // Primero extraer y reemplazar [link:] e [img:] antes de escapar HTML
-  var parts = [];
-  var remaining = text;
+  var j = 0;
+  while (j < text.length) {
+    var ob = text.indexOf('[', j);
+    if (ob === -1) { result += text.slice(j); break; }
+    var cb = text.indexOf('](', ob);
+    if (cb === -1) { result += text.slice(j); break; }
+    var cp = text.indexOf(')', cb + 2);
+    if (cp === -1) { result += text.slice(j); break; }
+    var lbl = text.slice(ob + 1, cb);
+    var href = text.slice(cb + 2, cp);
+    if (href.indexOf('http') === 0) {
+      result += text.slice(j, ob);
+      result += '<a href="' + href + '" target="_blank" style="color:#3b6fd4;text-decoration:underline">' + lbl + '</a>';
+      j = cp + 1;
+    } else {
+      result += text.slice(j, ob + 1);
+      j = ob + 1;
+    }
+  }
+  text = result;
 
-  // Reemplazar [link:URL|Label]
-  remaining = remaining.replace(/\[link:(https?:\/\/[^|\]]+)\|([^\]]+)\]/g, function(_, url, label) {
-    return 'LINK' + url + '' + label + '';
-  });
-
-  // Reemplazar [link:URL]
-  remaining = remaining.replace(/\[link:(https?:\/\/[^\]]+)\]/g, function(_, url) {
-    return 'LINK' + url + '' + url + '';
-  });
-
-  // Reemplazar [img:URL]
-  remaining = remaining.replace(/\[img:(https?:\/\/[^\]]+)\]/g, function(_, url) {
-    return 'IMG' + url + '';
-  });
-
-  // Ahora escapar HTML del texto restante
-  remaining = remaining.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-  // Restaurar los enlaces e imagenes
-  remaining = remaining.replace(/LINK([^]+)([^]+)/g, function(_, url, label) {
-    return '<a href="' + url + '" target="_blank" style="color:#3b6fd4;text-decoration:underline">' + label + '</a>';
-  });
-  remaining = remaining.replace(/IMG([^]+)/g, function(_, url) {
-    return '<img src="' + url + '" alt="imagen" style="max-width:100%;border-radius:8px;margin:6px 0;display:block">';
-  });
-
-  // Convertir enlaces Markdown [texto](url)
-  remaining = remaining.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, function(_, label, url) {
-    return '<a href="' + url + '" target="_blank" style="color:#3b6fd4;text-decoration:underline">' + label + '</a>';
-  });
+  // Restaurar tokens
+  for (var t = 0; t < tokens.length; t++) {
+    text = text.split(tokens[t].key).join(tokens[t].html);
+  }
 
   // Saltos de linea
-  remaining = remaining.split('\n').join('<br>');
-  return remaining;
+  text = text.split('\n').join('<br>');
+  return text;
 }
+
 
 function addMessage(role, text) {
   const msgs = document.getElementById('messages');
