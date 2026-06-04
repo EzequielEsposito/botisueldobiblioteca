@@ -126,11 +126,11 @@ function renderText(text) {
   function save(html) {
     var idx = stored.length;
     stored.push(html);
-    return '<!--SLOT' + idx + '-->';
+    return 'ZZSLOT' + idx + 'ZZ';
   }
 
   function restore(t) {
-    return t.replace(/<!--SLOT(\d+)-->/g, function(_, i) {
+    return t.replace(/ZZSLOT(\d+)ZZ/g, function(_, i) {
       return stored[parseInt(i)];
     });
   }
