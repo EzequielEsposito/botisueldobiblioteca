@@ -191,6 +191,29 @@ function renderText(text) {
   }
   text = result;
 
+   // URLs sueltas
+  result = ''; i = 0;
+  while (i < text.length) {
+    var httpPos = text.indexOf('http', i);
+    if (httpPos === -1) { result += text.slice(i); break; }
+    var spacePos = text.length;
+    var chars = [' ', '\n', '\t', '"', "'", '<', '>'];
+    for (var c = 0; c < chars.length; c++) {
+      var cp2 = text.indexOf(chars[c], httpPos);
+      if (cp2 !== -1 && cp2 < spacePos) spacePos = cp2;
+    }
+    var url = text.slice(httpPos, spacePos);
+    if (url.slice(0, 4) === 'http') {
+      result += text.slice(i, httpPos);
+      result += save('<a href="' + url + '" target="_blank" style="color:#3b6fd4;text-decoration:underline">' + url + '</a>');
+      i = spacePos;
+    } else {
+      result += text.slice(i, httpPos + 1);
+      i = httpPos + 1;
+    }
+  }
+  text = result;
+
   // PASO 2: escapar HTML
   text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -202,11 +225,6 @@ function renderText(text) {
   text = text.replace(/\*([^*<]+)\*/g, '<em>$1</em>');
   text = text.replace(/(^|<br>)- (.+)/g, '$1<li>$2</li>');
   text = text.replace(/(<li>.*?<\/li>)+/gs, '<ul style="margin:6px 0 6px 18px">$&</ul>');
-
-  // PASO 5: convertir URLs sueltas en enlaces
-  text = text.replace(/(https?:\/\/[^\s<"']+)/g, function(url) {
-    return '<a href="' + url + '" target="_blank" style="color:#3b6fd4;text-decoration:underline">' + url + '</a>';
-  });
 
   // PASO 6: saltos de linea
   text = text.split('\n').join('<br>');
